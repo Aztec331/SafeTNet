@@ -97,9 +97,12 @@ WSGI_APPLICATION = "SafeTNet.wsgi.application"
 # }
 
 
+
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
+    "default": dj_database_url.config(
+        default="postgresql://safetnet_user:DENcxAFMheNUNIIlqQIPUijBc7NvpdZT@dpg-d3jks395pdvs73eh0500-a.oregon-postgres.render.com/safetnet",
+        conn_max_age=600,
+        ssl_require=True
     )
 }
 # Password validation
