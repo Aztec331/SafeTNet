@@ -12,6 +12,11 @@ router.register(r'users', views.UserListViewSet, basename='user')
 router.register(r'alerts', views.AlertViewSet, basename='alert')
 router.register(r'reports', views.GlobalReportViewSet, basename='report')
 
+# Sub-Admin Panel routers
+router.register(r'officers', views.SecurityOfficerViewSet, basename='officer')
+router.register(r'incidents', views.IncidentViewSet, basename='incident')
+router.register(r'notifications', views.NotificationViewSet, basename='notification')
+
 urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.CustomTokenObtainPairView.as_view(), name='login'),
@@ -23,4 +28,8 @@ urlpatterns = [
     path('reports/generate/', views.generate_report, name='generate_report'),
     path('reports/{id}/download/', views.download_report, name='download_report'),
     path('admin/', include(router.urls)),
+    
+    # Sub-Admin Panel specific endpoints
+    path('subadmin/notifications/send/', views.send_notification, name='send_notification'),
+    path('subadmin/dashboard-kpis/', views.subadmin_dashboard_kpis, name='subadmin_dashboard_kpis'),
 ]

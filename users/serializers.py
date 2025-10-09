@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport
+from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -213,3 +213,121 @@ class GlobalReportCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['generated_by'] = self.context['request'].user
         return super().create(validated_data)
+
+
+# Sub-Admin Panel Serializers
+class SecurityOfficerSerializer(serializers.ModelSerializer):
+    assigned_geofence_name = serializers.CharField(source='assigned_geofence.name', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = SecurityOfficer
+        fields = (
+            'id', 'name', 'contact', 'email', 'assigned_geofence', 
+            'assigned_geofence_name', 'organization', 'organization_name',
+            'is_active', 'created_by_username', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'created_by_username', 'created_at', 'updated_at')
+
+
+class SecurityOfficerCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SecurityOfficer
+        fields = ('name', 'contact', 'email', 'assigned_geofence', 'is_active')
+    
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        validated_data['organization'] = self.context['request'].user.organization
+        return super().create(validated_data)
+
+
+class IncidentSerializer(serializers.ModelSerializer):
+    geofence_name = serializers.CharField(source='geofence.name', read_only=True)
+    officer_name = serializers.CharField(source='officer.name', read_only=True)
+    resolved_by_username = serializers.CharField(source='resolved_by.username', read_only=True)
+    
+    class Meta:
+        model = Incident
+        fields = (
+            'id', 'geofence', 'geofence_name', 'officer', 'officer_name',
+            'incident_type', 'severity', 'title', 'details', 'location',
+            'is_resolved', 'resolved_at', 'resolved_by_username',
+            'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'resolved_at', 'created_at', 'updated_at')
+
+
+class IncidentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Incident
+        fields = (
+            'geofence', 'officer', 'incident_type', 'severity', 
+            'title', 'details', 'location'
+        )
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    target_geofence_name = serializers.CharField(source='target_geofence.name', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    target_officers_names = serializers.StringRelatedField(source='target_officers', many=True, read_only=True)
+    
+    class Meta:
+        model = Notification
+        fields = (
+            'id', 'notification_type', 'title', 'message', 'target_type',
+            'target_geofence', 'target_geofence_name', 'target_officers',
+            'target_officers_names', 'organization', 'organization_name',
+            'is_sent', 'sent_at', 'created_by_username', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'sent_at', 'created_by_username', 'created_at', 'updated_at')
+
+
+class NotificationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = (
+            'notification_type', 'title', 'message', 'target_type',
+            'target_geofence', 'target_officers'
+        )
+    
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        validated_data['organization'] = self.context['request'].user.organization
+        return super().create(validated_data)
+
+
+class NotificationSendSerializer(serializers.Serializer):
+    """Serializer for sending notifications"""
+    notification_type = serializers.ChoiceField(choices=Notification.NOTIFICATION_TYPES)
+    title = serializers.CharField(max_length=200)
+    message = serializers.CharField()
+    target_type = serializers.ChoiceField(choices=Notification.TARGET_TYPES)
+    target_geofence_id = serializers.IntegerField(required=False, allow_null=True)
+    target_officer_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True
+    )
+    
+    def validate_target_geofence_id(self, value):
+        if value:
+            try:
+                geofence = Geofence.objects.get(id=value)
+                # Ensure the geofence belongs to the user's organization
+                if geofence.organization != self.context['request'].user.organization:
+                    raise serializers.ValidationError("Geofence does not belong to your organization.")
+            except Geofence.DoesNotExist:
+                raise serializers.ValidationError("Geofence not found.")
+        return value
+    
+    def validate_target_officer_ids(self, value):
+        if value:
+            officers = SecurityOfficer.objects.filter(
+                id__in=value,
+                organization=self.context['request'].user.organization
+            )
+            if len(officers) != len(value):
+                raise serializers.ValidationError("Some officers do not belong to your organization.")
+        return value

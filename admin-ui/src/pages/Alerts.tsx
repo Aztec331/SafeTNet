@@ -36,14 +36,16 @@ import {
   Warning as HighIcon,
   Info as MediumIcon,
   Help as LowIcon,
+  Alert as AlertType,
+  Alert as MuiAlert,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { alertService } from '../services/alertService';
-import { Alert } from '../types';
+
 
 const Alerts: React.FC = () => {
   const { user, logout } = useAuth();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<AlertType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

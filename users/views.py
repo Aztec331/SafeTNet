@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
@@ -15,9 +15,12 @@ from .serializers import (
     SubAdminProfileSerializer, SubAdminProfileCreateSerializer,
     OrganizationSerializer, GeofenceSerializer, GeofenceCreateSerializer,
     UserListSerializer, AlertSerializer, AlertCreateSerializer,
-    GlobalReportSerializer, GlobalReportCreateSerializer
+    GlobalReportSerializer, GlobalReportCreateSerializer,
+    SecurityOfficerSerializer, SecurityOfficerCreateSerializer,
+    IncidentSerializer, IncidentCreateSerializer,
+    NotificationSerializer, NotificationCreateSerializer, NotificationSendSerializer
 )
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport
+from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification
 from .permissions import IsSuperAdmin, IsSuperAdminOrSubAdmin, OrganizationIsolationMixin
 
 
@@ -453,6 +456,267 @@ def dashboard_kpis(request):
         'total_users': total_users,
         'critical_alerts': critical_alerts,
         'system_health': 'Good' if critical_alerts == 0 else 'Warning'
+    }
+    
+    return Response(kpis)
+
+
+# Sub-Admin Panel Views
+class SecurityOfficerViewSet(OrganizationIsolationMixin, ModelViewSet):
+    """
+    ViewSet for managing Security Officers with organization isolation.
+    Only SUB_ADMIN can perform CRUD operations on their organization's officers.
+    """
+    queryset = SecurityOfficer.objects.select_related('assigned_geofence', 'organization', 'created_by').all()
+    permission_classes = [IsAuthenticated, IsSuperAdminOrSubAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active', 'assigned_geofence']
+    search_fields = ['name', 'contact', 'email']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return SecurityOfficerCreateSerializer
+        return SecurityOfficerSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # SUPER_ADMIN can see all officers
+        if user.role == 'SUPER_ADMIN':
+            return queryset
+        
+        # SUB_ADMIN can only see officers from their organization
+        if user.role == 'SUB_ADMIN' and user.organization:
+            return queryset.filter(organization=user.organization)
+        
+        # Regular users see no data
+        return queryset.none()
+    
+    def perform_create(self, serializer):
+        # For SUB_ADMIN, automatically set organization to their organization
+        if self.request.user.role == 'SUB_ADMIN' and self.request.user.organization:
+            serializer.save(
+                organization=self.request.user.organization,
+                created_by=self.request.user
+            )
+        else:
+            serializer.save(created_by=self.request.user)
+
+
+class IncidentViewSet(OrganizationIsolationMixin, ModelViewSet):
+    """
+    ViewSet for managing Incidents with organization isolation.
+    Only SUB_ADMIN can perform CRUD operations on their organization's incidents.
+    """
+    queryset = Incident.objects.select_related('geofence', 'officer', 'resolved_by').all()
+    permission_classes = [IsAuthenticated, IsSuperAdminOrSubAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['incident_type', 'severity', 'is_resolved', 'geofence', 'officer']
+    search_fields = ['title', 'details', 'officer__name', 'geofence__name']
+    ordering_fields = ['created_at', 'severity', 'title']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return IncidentCreateSerializer
+        return IncidentSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # SUPER_ADMIN can see all incidents
+        if user.role == 'SUPER_ADMIN':
+            return queryset
+        
+        # SUB_ADMIN can only see incidents from their organization's geofences
+        if user.role == 'SUB_ADMIN' and user.organization:
+            return queryset.filter(geofence__organization=user.organization)
+        
+        # Regular users see no data
+        return queryset.none()
+    
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, pk=None):
+        """Mark incident as resolved"""
+        incident = self.get_object()
+        incident.resolve(request.user)
+        return Response({'message': 'Incident resolved successfully'})
+
+
+class NotificationViewSet(OrganizationIsolationMixin, ModelViewSet):
+    """
+    ViewSet for managing Notifications with organization isolation.
+    Only SUB_ADMIN can perform CRUD operations on their organization's notifications.
+    """
+    queryset = Notification.objects.select_related('target_geofence', 'organization', 'created_by').prefetch_related('target_officers').all()
+    permission_classes = [IsAuthenticated, IsSuperAdminOrSubAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['notification_type', 'target_type', 'is_sent', 'target_geofence']
+    search_fields = ['title', 'message']
+    ordering_fields = ['created_at', 'sent_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return NotificationCreateSerializer
+        return NotificationSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        # SUPER_ADMIN can see all notifications
+        if user.role == 'SUPER_ADMIN':
+            return queryset
+        
+        # SUB_ADMIN can only see notifications from their organization
+        if user.role == 'SUB_ADMIN' and user.organization:
+            return queryset.filter(organization=user.organization)
+        
+        # Regular users see no data
+        return queryset.none()
+    
+    def perform_create(self, serializer):
+        # For SUB_ADMIN, automatically set organization to their organization
+        if self.request.user.role == 'SUB_ADMIN' and self.request.user.organization:
+            serializer.save(
+                organization=self.request.user.organization,
+                created_by=self.request.user
+            )
+        else:
+            serializer.save(created_by=self.request.user)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsSuperAdminOrSubAdmin])
+def send_notification(request):
+    """
+    Send a notification to officers.
+    """
+    serializer = NotificationSendSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        data = serializer.validated_data
+        
+        # Create notification
+        notification = Notification.objects.create(
+            notification_type=data['notification_type'],
+            title=data['title'],
+            message=data['message'],
+            target_type=data['target_type'],
+            target_geofence_id=data.get('target_geofence_id'),
+            organization=request.user.organization,
+            created_by=request.user
+        )
+        
+        # Set target officers based on target_type
+        if data['target_type'] == 'ALL_OFFICERS':
+            officers = SecurityOfficer.objects.filter(
+                organization=request.user.organization,
+                is_active=True
+            )
+            notification.target_officers.set(officers)
+        
+        elif data['target_type'] == 'GEOFENCE_OFFICERS' and data.get('target_geofence_id'):
+            officers = SecurityOfficer.objects.filter(
+                assigned_geofence_id=data['target_geofence_id'],
+                organization=request.user.organization,
+                is_active=True
+            )
+            notification.target_officers.set(officers)
+        
+        elif data['target_type'] == 'SPECIFIC_OFFICERS' and data.get('target_officer_ids'):
+            officers = SecurityOfficer.objects.filter(
+                id__in=data['target_officer_ids'],
+                organization=request.user.organization,
+                is_active=True
+            )
+            notification.target_officers.set(officers)
+        
+        # Mark as sent (in real implementation, this would trigger actual notification sending)
+        notification.mark_as_sent()
+        
+        return Response({
+            'message': 'Notification sent successfully',
+            'notification_id': notification.id,
+            'target_count': notification.target_officers.count()
+        }, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsSuperAdminOrSubAdmin])
+def subadmin_dashboard_kpis(request):
+    """
+    Get KPIs for sub-admin dashboard.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    today = timezone.now().date()
+    user = request.user
+    
+    if user.role != 'SUB_ADMIN' or not user.organization:
+        return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+    
+    organization = user.organization
+    
+    # Calculate KPIs for the sub-admin's organization
+    active_geofences = Geofence.objects.filter(
+        active=True, 
+        organization=organization
+    ).count()
+    
+    total_officers = SecurityOfficer.objects.filter(
+        organization=organization
+    ).count()
+    
+    active_officers = SecurityOfficer.objects.filter(
+        organization=organization,
+        is_active=True
+    ).count()
+    
+    incidents_today = Incident.objects.filter(
+        created_at__date=today,
+        geofence__organization=organization
+    ).count()
+    
+    unresolved_incidents = Incident.objects.filter(
+        is_resolved=False,
+        geofence__organization=organization
+    ).count()
+    
+    critical_incidents = Incident.objects.filter(
+        severity='CRITICAL',
+        is_resolved=False,
+        geofence__organization=organization
+    ).count()
+    
+    notifications_sent_today = Notification.objects.filter(
+        created_at__date=today,
+        organization=organization,
+        is_sent=True
+    ).count()
+    
+    kpis = {
+        'active_geofences': active_geofences,
+        'total_officers': total_officers,
+        'active_officers': active_officers,
+        'incidents_today': incidents_today,
+        'unresolved_incidents': unresolved_incidents,
+        'critical_incidents': critical_incidents,
+        'notifications_sent_today': notifications_sent_today,
+        'organization_name': organization.name
     }
     
     return Response(kpis)
