@@ -17,6 +17,18 @@ router.register(r'officers', views.SecurityOfficerViewSet, basename='officer')
 router.register(r'incidents', views.IncidentViewSet, basename='incident')
 router.register(r'notifications', views.NotificationViewSet, basename='notification')
 
+# Promo Code router
+router.register(r'promocode', views.PromoCodeViewSet, basename='promocode')
+
+# Discount Emails router
+router.register(r'discount-emails', views.DiscountEmailViewSet, basename='discount-email')
+
+# User Replies router (read-only)
+router.register(r'user-replies', views.UserReplyViewSet, basename='user-reply')
+
+# User Details router (read-only)
+router.register(r'user-details', views.UserDetailsViewSet, basename='user-detail')
+
 urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.CustomTokenObtainPairView.as_view(), name='login'),

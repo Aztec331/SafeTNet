@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -18,9 +18,12 @@ from .serializers import (
     GlobalReportSerializer, GlobalReportCreateSerializer,
     SecurityOfficerSerializer, SecurityOfficerCreateSerializer,
     IncidentSerializer, IncidentCreateSerializer,
-    NotificationSerializer, NotificationCreateSerializer, NotificationSendSerializer
+    NotificationSerializer, NotificationCreateSerializer, NotificationSendSerializer,
+    PromoCodeSerializer, PromoCodeCreateSerializer,
+    DiscountEmailSerializer, DiscountEmailCreateSerializer,
+    UserReplySerializer, UserDetailsSerializer
 )
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification
+from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
 from .permissions import IsSuperAdmin, IsSuperAdminOrSubAdmin, OrganizationIsolationMixin
 
 
@@ -720,3 +723,81 @@ def subadmin_dashboard_kpis(request):
     }
     
     return Response(kpis)
+
+
+class PromoCodeViewSet(ModelViewSet):
+    """
+    ViewSet for managing Promo Codes.
+    Only SUPER_ADMIN can perform CRUD operations.
+    """
+    queryset = PromoCode.objects.all()
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['code']
+    ordering_fields = ['code', 'discount_percentage', 'expiry_date', 'created_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return PromoCodeCreateSerializer
+        return PromoCodeSerializer
+
+
+class DiscountEmailViewSet(ModelViewSet):
+    """
+    ViewSet for managing Discount Emails.
+    Only SUPER_ADMIN can perform CRUD operations.
+    """
+    queryset = DiscountEmail.objects.select_related('discount_code').all()
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status', 'discount_code']
+    search_fields = ['email', 'discount_code__code']
+    ordering_fields = ['email', 'status', 'created_at']
+    ordering = ['-created_at']
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return DiscountEmailCreateSerializer
+        return DiscountEmailSerializer
+    
+    @action(detail=True, methods=['post'])
+    def mark_sent(self, request, pk=None):
+        """Mark discount email as sent"""
+        discount_email = self.get_object()
+        discount_email.mark_as_sent()
+        return Response({'message': 'Discount email marked as sent successfully'})
+
+
+class UserReplyViewSet(ReadOnlyModelViewSet):
+    """
+    Read-only ViewSet for viewing User Replies.
+    Only SUPER_ADMIN can view user replies.
+    """
+    queryset = UserReply.objects.all()
+    serializer_class = UserReplySerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['email', 'message']
+    ordering_fields = ['email', 'date_time']
+    ordering = ['-date_time']
+
+
+class UserDetailsViewSet(ReadOnlyModelViewSet):
+    """
+    Read-only ViewSet for viewing User Details.
+    Only SUPER_ADMIN can view user details.
+    """
+    queryset = UserDetails.objects.all()
+    serializer_class = UserDetailsSerializer
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+    pagination_class = SubAdminPagination
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['status']
+    search_fields = ['username']
+    ordering_fields = ['username', 'price', 'status', 'date']
+    ordering = ['-date']

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification
+from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -331,3 +331,82 @@ class NotificationSendSerializer(serializers.Serializer):
             if len(officers) != len(value):
                 raise serializers.ValidationError("Some officers do not belong to your organization.")
         return value
+
+
+class PromoCodeSerializer(serializers.ModelSerializer):
+    is_valid = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PromoCode
+        fields = (
+            'id', 'code', 'discount_percentage', 'expiry_date', 
+            'is_active', 'is_valid', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'is_valid', 'created_at', 'updated_at')
+    
+    def get_is_valid(self, obj):
+        return obj.is_valid()
+
+
+class PromoCodeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PromoCode
+        fields = ('code', 'discount_percentage', 'expiry_date', 'is_active')
+    
+    def validate_code(self, value):
+        """Validate that promo code is unique and properly formatted"""
+        if PromoCode.objects.filter(code=value).exists():
+            raise serializers.ValidationError("A promo code with this code already exists.")
+        return value.upper()  # Convert to uppercase for consistency
+    
+    def validate_discount_percentage(self, value):
+        """Validate discount percentage is within valid range"""
+        if value <= 0 or value > 100:
+            raise serializers.ValidationError("Discount percentage must be between 0 and 100.")
+        return value
+
+
+class DiscountEmailSerializer(serializers.ModelSerializer):
+    discount_code_code = serializers.CharField(source='discount_code.code', read_only=True)
+    discount_code_discount = serializers.DecimalField(source='discount_code.discount_percentage', max_digits=5, decimal_places=2, read_only=True)
+    
+    class Meta:
+        model = DiscountEmail
+        fields = (
+            'id', 'email', 'discount_code', 'discount_code_code', 
+            'discount_code_discount', 'status', 'created_at'
+        )
+        read_only_fields = ('id', 'discount_code_code', 'discount_code_discount', 'created_at')
+
+
+class DiscountEmailCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DiscountEmail
+        fields = ('email', 'discount_code', 'status')
+    
+    def validate(self, attrs):
+        """Validate that the combination of email and discount_code is unique"""
+        email = attrs.get('email')
+        discount_code = attrs.get('discount_code')
+        
+        if email and discount_code:
+            if DiscountEmail.objects.filter(email=email, discount_code=discount_code).exists():
+                raise serializers.ValidationError(
+                    "A discount email with this email and discount code combination already exists."
+                )
+        
+        return attrs
+
+
+class UserReplySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserReply
+        fields = ('id', 'email', 'message', 'date_time')
+        read_only_fields = ('id', 'date_time')
+
+
+class UserDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserDetails
+        fields = ('id', 'username', 'price', 'status', 'date')
+        read_only_fields = ('id', 'date')

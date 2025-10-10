@@ -452,3 +452,105 @@ class GlobalReport(models.Model):
         if file_path:
             self.file_path = file_path
         self.save()
+
+
+class PromoCode(models.Model):
+    code = models.CharField(max_length=50, unique=True, help_text="Unique promo code")
+    discount_percentage = models.DecimalField(
+        max_digits=5, 
+        decimal_places=2, 
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Discount percentage (0-100)"
+    )
+    expiry_date = models.DateTimeField(help_text="Expiry date and time for the promo code")
+    is_active = models.BooleanField(default=True, help_text="Whether the promo code is active")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Promo Code'
+        verbose_name_plural = 'Promo Codes'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.code} ({self.discount_percentage}%)"
+    
+    def is_valid(self):
+        """Check if promo code is valid (active and not expired)"""
+        return self.is_active and timezone.now() < self.expiry_date
+
+
+class DiscountEmail(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('SENT', 'Sent'),
+    ]
+    
+    email = models.EmailField(help_text="Email address to send discount to")
+    discount_code = models.ForeignKey(
+        PromoCode,
+        on_delete=models.CASCADE,
+        related_name='discount_emails',
+        help_text="Promo code to send"
+    )
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='PENDING',
+        help_text="Status of the discount email"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Discount Email'
+        verbose_name_plural = 'Discount Emails'
+        ordering = ['-created_at']
+        unique_together = ['email', 'discount_code']
+    
+    def __str__(self):
+        return f"{self.email} - {self.discount_code.code} ({self.status})"
+    
+    def mark_as_sent(self):
+        """Mark discount email as sent"""
+        self.status = 'SENT'
+        self.save()
+
+
+class UserReply(models.Model):
+    email = models.EmailField(help_text="Email address of the user who replied")
+    message = models.TextField(help_text="Reply message from the user")
+    date_time = models.DateTimeField(auto_now_add=True, help_text="Date and time when the reply was received")
+    
+    class Meta:
+        verbose_name = 'User Reply'
+        verbose_name_plural = 'User Replies'
+        ordering = ['-date_time']
+    
+    def __str__(self):
+        return f"{self.email} - {self.date_time.strftime('%Y-%m-%d %H:%M')}"
+
+
+class UserDetails(models.Model):
+    STATUS_CHOICES = [
+        ('ACTIVE', 'Active'),
+        ('INACTIVE', 'Inactive'),
+        ('SUSPENDED', 'Suspended'),
+    ]
+    
+    username = models.CharField(max_length=150, unique=True, help_text="Username of the user")
+    price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price associated with the user")
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='ACTIVE',
+        help_text="Status of the user"
+    )
+    date = models.DateTimeField(auto_now_add=True, help_text="Date when the user details were created")
+    
+    class Meta:
+        verbose_name = 'User Detail'
+        verbose_name_plural = 'User Details'
+        ordering = ['-date']
+    
+    def __str__(self):
+        return f"{self.username} - {self.status} (${self.price})"
