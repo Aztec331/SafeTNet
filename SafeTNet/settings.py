@@ -55,8 +55,11 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "django_extensions",
+    #Custom Apps
     "users",
     "core",
+    "security",
+    "security_app",
 ]
 
 MIDDLEWARE = [
@@ -312,3 +315,9 @@ else:
     }
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
+
+# Google Maps API Configuration
+GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default=None)
+
+# Firebase Cloud Messaging Configuration
+FCM_SERVER_KEY = config('FCM_SERVER_KEY', default=None)
