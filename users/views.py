@@ -12,7 +12,6 @@ from django.contrib.auth import authenticate
 from django.db.models import Q
 from .serializers import (
     UserRegistrationSerializer, UserLoginSerializer, UserSerializer,
-    SubAdminProfileSerializer, SubAdminProfileCreateSerializer,
     OrganizationSerializer, GeofenceSerializer, GeofenceCreateSerializer,
     UserListSerializer, AlertSerializer, AlertCreateSerializer,
     GlobalReportSerializer, GlobalReportCreateSerializer,
@@ -23,7 +22,7 @@ from .serializers import (
     DiscountEmailSerializer, DiscountEmailCreateSerializer,
     UserReplySerializer, UserDetailsSerializer
 )
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
+from .models import User, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
 from .permissions import IsSuperAdmin, IsSuperAdminOrSubAdmin, OrganizationIsolationMixin
 
 
@@ -85,48 +84,48 @@ def test_auth(request):
     })
 
 
-class SubAdminPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    max_page_size = 100
+# class SubAdminPagination(PageNumberPagination):
+#     page_size = 10
+#     page_size_query_param = 'page_size'
+#     max_page_size = 100
 
 
-class SubAdminProfileViewSet(ModelViewSet):
-    """
-    ViewSet for managing SubAdmin profiles.
-    Only SUPER_ADMIN can perform CRUD operations.
-    """
-    queryset = SubAdminProfile.objects.select_related('user', 'created_by').all()
-    permission_classes = [IsAuthenticated, IsSuperAdmin]
-    pagination_class = SubAdminPagination
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['permissions', 'assigned_scope', 'is_active']
-    search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name']
-    ordering_fields = ['created_at', 'updated_at', 'user__username']
-    ordering = ['-created_at']
+# class SubAdminProfileViewSet(ModelViewSet):
+#     """
+#     ViewSet for managing SubAdmin profiles.
+#     Only SUPER_ADMIN can perform CRUD operations.
+#     """
+#     queryset = SubAdminProfile.objects.select_related('user', 'created_by').all()
+#     permission_classes = [IsAuthenticated, IsSuperAdmin]
+#     pagination_class = SubAdminPagination
+#     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+#     filterset_fields = ['permissions', 'assigned_scope', 'is_active']
+#     search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name']
+#     ordering_fields = ['created_at', 'updated_at', 'user__username']
+#     ordering = ['-created_at']
     
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return SubAdminProfileCreateSerializer
-        return SubAdminProfileSerializer
+#     def get_serializer_class(self):
+#         if self.action == 'create':
+#             return SubAdminProfileCreateSerializer
+#         return SubAdminProfileSerializer
     
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+#     def perform_create(self, serializer):
+#         serializer.save(created_by=self.request.user)
     
-    def get_queryset(self):
-        queryset = super().get_queryset()
+#     def get_queryset(self):
+#         queryset = super().get_queryset()
         
-        # Add search functionality
-        search = self.request.query_params.get('search', None)
-        if search:
-            queryset = queryset.filter(
-                Q(user__username__icontains=search) |
-                Q(user__email__icontains=search) |
-                Q(user__first_name__icontains=search) |
-                Q(user__last_name__icontains=search)
-            )
+#         # Add search functionality
+#         search = self.request.query_params.get('search', None)
+#         if search:
+#             queryset = queryset.filter(
+#                 Q(user__username__icontains=search) |
+#                 Q(user__email__icontains=search) |
+#                 Q(user__first_name__icontains=search) |
+#                 Q(user__last_name__icontains=search)
+#             )
         
-        return queryset
+#         return queryset
 
 
 class OrganizationViewSet(ModelViewSet):
