@@ -36,38 +36,6 @@ export interface ApiError {
   details?: Record<string, string[]>;
 }
 
-export interface SubAdminProfile {
-  id: number;
-  user: number;
-  user_username: string;
-  user_email: string;
-  user_full_name: string;
-  permissions: 'READ_ONLY' | 'READ_WRITE' | 'FULL_ACCESS';
-  assigned_scope: 'GLOBAL' | 'REGIONAL' | 'LOCAL';
-  is_active: boolean;
-  created_by_username: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SubAdminCreateRequest {
-  username: string;
-  email: string;
-  password: string;
-  password_confirm: string;
-  first_name?: string;
-  last_name?: string;
-  permissions: 'READ_ONLY' | 'READ_WRITE' | 'FULL_ACCESS';
-  assigned_scope: 'GLOBAL' | 'REGIONAL' | 'LOCAL';
-  is_active: boolean;
-}
-
-export interface SubAdminUpdateRequest {
-  permissions: 'READ_ONLY' | 'READ_WRITE' | 'FULL_ACCESS';
-  assigned_scope: 'GLOBAL' | 'REGIONAL' | 'LOCAL';
-  is_active: boolean;
-}
-
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;

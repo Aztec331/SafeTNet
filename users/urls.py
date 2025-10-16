@@ -5,7 +5,6 @@ from . import views
 
 # Create router for ViewSets
 router = DefaultRouter()
-router.register(r'subadmins', views.SubAdminProfileViewSet, basename='subadmin')
 router.register(r'organizations', views.OrganizationViewSet, basename='organization')
 router.register(r'geofences', views.GeofenceViewSet, basename='geofence')
 router.register(r'users', views.UserListViewSet, basename='user')

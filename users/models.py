@@ -45,55 +45,6 @@ class User(AbstractUser):
         return f"{self.username} ({self.role})"
 
 
-class SubAdminProfile(models.Model):
-    PERMISSION_CHOICES = [
-        ('READ_ONLY', 'Read Only'),
-        ('READ_WRITE', 'Read & Write'),
-        ('FULL_ACCESS', 'Full Access'),
-    ]
-    
-    SCOPE_CHOICES = [
-        ('GLOBAL', 'Global'),
-        ('REGIONAL', 'Regional'),
-        ('LOCAL', 'Local'),
-    ]
-    
-    user = models.OneToOneField(
-        User, 
-        on_delete=models.CASCADE, 
-        related_name='subadmin_profile',
-        limit_choices_to={'role': 'SUB_ADMIN'}
-    )
-    permissions = models.CharField(
-        max_length=20,
-        choices=PERMISSION_CHOICES,
-        default='READ_ONLY'
-    )
-    assigned_scope = models.CharField(
-        max_length=20,
-        choices=SCOPE_CHOICES,
-        default='LOCAL'
-    )
-    is_active = models.BooleanField(default=True)
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='created_subadmins',
-        limit_choices_to={'role': 'SUPER_ADMIN'}
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        verbose_name = 'Sub Admin Profile'
-        verbose_name_plural = 'Sub Admin Profiles'
-    
-    def __str__(self):
-        return f"{self.user.username} - {self.permissions} ({self.assigned_scope})"
-
-
 class Geofence(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)

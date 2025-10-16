@@ -72,7 +72,7 @@ class Case(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='assigned_cases'
+        related_name='assigned_security_app_cases'
     )
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='open')
