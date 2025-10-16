@@ -58,7 +58,7 @@ class Case(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='assigned_cases'
+        related_name='security_cases'
     )
     status = models.CharField(
         max_length=10,
