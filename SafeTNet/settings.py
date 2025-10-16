@@ -55,8 +55,12 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     "django_extensions",
+    #Custom Apps
     "users",
+    "users_profile",
     "core",
+    "security",
+    "security_app",
 ]
 
 MIDDLEWARE = [
@@ -244,6 +248,8 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
 # Logging Configuration
+LOG_DIR = BASE_DIR / 'logs'
+os.makedirs(LOG_DIR, exist_ok=True)
 if os.environ.get("RENDER") == "true":  # Render sets this env variable
     LOGGING = {
         'version': 1,
@@ -284,7 +290,7 @@ else:
             'file': {
                 'level': 'INFO',
                 'class': 'logging.FileHandler',
-                'filename': 'logs/django.log',
+                'filename': str(LOG_DIR / 'django.log'),
                 'formatter': 'verbose',
             },
             'console': {
@@ -312,3 +318,9 @@ else:
     }
 # Custom User Model
 AUTH_USER_MODEL = 'users.User'
+
+# Google Maps API Configuration
+GOOGLE_MAPS_API_KEY = config('GOOGLE_MAPS_API_KEY', default=None)
+
+# Firebase Cloud Messaging Configuration
+FCM_SERVER_KEY = config('FCM_SERVER_KEY', default=None)

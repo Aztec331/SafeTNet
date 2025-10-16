@@ -5,7 +5,6 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import SubAdmins from './pages/SubAdmins';
 import Geofences from './pages/Geofences';
 import Users from './pages/Users';
 import Alerts from './pages/Alerts';
@@ -37,14 +36,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/subadmins" 
-              element={
-                <ProtectedRoute>
-                  <SubAdmins />
                 </ProtectedRoute>
               } 
             />

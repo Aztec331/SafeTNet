@@ -5,7 +5,6 @@ from . import views
 
 # Create router for ViewSets
 router = DefaultRouter()
-router.register(r'subadmins', views.SubAdminProfileViewSet, basename='subadmin')
 router.register(r'organizations', views.OrganizationViewSet, basename='organization')
 router.register(r'geofences', views.GeofenceViewSet, basename='geofence')
 router.register(r'users', views.UserListViewSet, basename='user')
@@ -38,7 +37,7 @@ urlpatterns = [
     path('test-auth/', views.test_auth, name='test_auth'),
     path('dashboard-kpis/', views.dashboard_kpis, name='dashboard_kpis'),
     path('reports/generate/', views.generate_report, name='generate_report'),
-    path('reports/{id}/download/', views.download_report, name='download_report'),
+    path('reports/<int:report_id>/download/', views.download_report, name='download_report'),
     path('admin/', include(router.urls)),
     
     # Sub-Admin Panel specific endpoints

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport
+from .models import User, Organization, Geofence, Alert, GlobalReport
 
 
 @admin.register(Organization)
@@ -22,28 +22,7 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
-@admin.register(SubAdminProfile)
-class SubAdminProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'permissions', 'assigned_scope', 'is_active', 'created_by', 'created_at')
-    list_filter = ('permissions', 'assigned_scope', 'is_active', 'created_at')
-    search_fields = ('user__username', 'user__email', 'created_by__username')
-    readonly_fields = ('created_at', 'updated_at')
-    ordering = ('-created_at',)
-    
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('user', 'permissions', 'assigned_scope', 'is_active')
-        }),
-        ('Audit Information', {
-            'fields': ('created_by', 'created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def save_model(self, request, obj, form, change):
-        if not change:  # Creating new object
-            obj.created_by = request.user
-        super().save_model(request, obj, form, change)
+## Removed SubAdminProfile admin registration
 
 
 @admin.register(Geofence)

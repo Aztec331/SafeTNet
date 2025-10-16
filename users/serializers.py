@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, SubAdminProfile, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
+from .models import User, Organization, Geofence, Alert, GlobalReport, SecurityOfficer, Incident, Notification, PromoCode, DiscountEmail, UserReply, UserDetails
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -53,68 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'date_joined')
 
 
-class SubAdminProfileSerializer(serializers.ModelSerializer):
-    user_username = serializers.CharField(source='user.username', read_only=True)
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    user_full_name = serializers.SerializerMethodField()
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    
-    class Meta:
-        model = SubAdminProfile
-        fields = (
-            'id', 'user', 'user_username', 'user_email', 'user_full_name',
-            'permissions', 'assigned_scope', 'is_active', 
-            'created_by_username', 'created_at', 'updated_at'
-        )
-        read_only_fields = ('id', 'created_by_username', 'created_at', 'updated_at')
-    
-    def get_user_full_name(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}".strip() or obj.user.username
-
-
-class SubAdminProfileCreateSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(write_only=True)
-    email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(write_only=True, min_length=8)
-    password_confirm = serializers.CharField(write_only=True)
-    first_name = serializers.CharField(required=False, allow_blank=True)
-    last_name = serializers.CharField(required=False, allow_blank=True)
-    
-    class Meta:
-        model = SubAdminProfile
-        fields = (
-            'username', 'email', 'password', 'password_confirm', 
-            'first_name', 'last_name', 'permissions', 'assigned_scope', 'is_active'
-        )
-    
-    def validate(self, attrs):
-        if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError("Passwords don't match.")
-        return attrs
-    
-    def create(self, validated_data):
-        # Create user first
-        user_data = {
-            'username': validated_data['username'],
-            'email': validated_data['email'],
-            'password': validated_data['password'],
-            'first_name': validated_data.get('first_name', ''),
-            'last_name': validated_data.get('last_name', ''),
-            'role': 'SUB_ADMIN'
-        }
-        
-        user = User.objects.create_user(**user_data)
-        
-        # Create SubAdminProfile
-        profile_data = {
-            'user': user,
-            'permissions': validated_data['permissions'],
-            'assigned_scope': validated_data['assigned_scope'],
-            'is_active': validated_data['is_active'],
-            'created_by': self.context['request'].user
-        }
-        
-        return SubAdminProfile.objects.create(**profile_data)
+## Removed SubAdminProfile serializers as the model is deleted
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
